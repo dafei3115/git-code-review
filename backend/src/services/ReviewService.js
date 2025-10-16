@@ -2,7 +2,7 @@ const fs = require("fs-extra");
 const path = require("path");
 const axios = require("axios");
 const GitHubService = require("./git/GitHubService");
-const CodeChangeParser = require("./git/CodeChangeParser");
+const CodeChangeParser = require("./codeParser/CodeChangeParser");
 const { v4: uuidv4 } = require("uuid");
 
 // 数据目录路径

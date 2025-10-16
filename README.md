@@ -87,7 +87,7 @@ EMAIL_PASS=password
 EMAIL_FROM=code-review@example.com
 
 # DeepSeek API配置
-DEEPSEEK_API_URL=https://api.deepseek.com/v1/chat/completions
+DEEPSEEK_API_URL=https://api.deepseek.com
 
 # 日志配置
 LOG_LEVEL=info
