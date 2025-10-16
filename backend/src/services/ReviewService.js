@@ -123,12 +123,7 @@ class ReviewService {
           endTime: progress.endTime,
           reviewedAt: new Date().toISOString(),
           fileCount: filesWithContent.length,
-          issuesCount: reviewResults.reduce(
-            (sum, file) => sum + (file.issues ? file.issues.length : 0),
-            0
-          ),
           results: reviewResults,
-          summary: this.generateReviewSummary(reviewResults),
         };
 
         // 4. 保存审查结果
@@ -151,11 +146,11 @@ class ReviewService {
 
         return reviewResult;
       } catch (error) {
-        await this.writeErrorLog("执行代码审查失败", error);
+        await this.handleError("执行代码审查失败", error);
         throw error;
       }
     } catch (error) {
-      await this.writeErrorLog("执行代码审查失败", error);
+      await this.handleError("执行代码审查失败", error);
       throw error;
     }
   }
@@ -177,7 +172,7 @@ class ReviewService {
         message: "当前没有正在进行的审查任务",
       };
     } catch (error) {
-      await this.writeErrorLog("获取审查进度失败", error);
+      await this.handleError("获取审查进度失败", error);
       throw error;
     }
   }
@@ -220,7 +215,7 @@ class ReviewService {
       await scanDir(dir);
       return files;
     } catch (error) {
-      await this.writeErrorLog("扫描代码文件失败", error);
+      await this.handleError("扫描代码文件失败", error);
       throw error;
     }
   }
@@ -299,7 +294,7 @@ class ReviewService {
 
       await fs.writeJSON(indexFilePath, index, { spaces: 2 });
     } catch (error) {
-      await this.writeErrorLog("保存审查结果失败", error);
+      await this.handleError("保存审查结果失败", error);
       throw error;
     }
   }
@@ -325,19 +320,19 @@ class ReviewService {
           },
         }
       );
-      return response.data.choices[0].message;
+      return response.data;
     } catch (error) {
-      await this.writeErrorLog("调用DeepSeek API失败", error);
+      await this.handleError("调用DeepSeek API失败", error);
       throw error;
     }
   }
 
   // 提取通用的JSON解析方法
   static parseAPIResponse(responseData) {
-    if (responseData.choices && responseData.choices.length > 0) {
+    if (responseDaa.choices && responseData.choices.length > 0) {
       const content = responseData.choices[0].message.content;
       try {
-        return JSON.parse(content);
+        return content;
       } catch (jsonError) {
         console.error("JSON解析失败:", jsonError);
         return null;
@@ -603,7 +598,7 @@ class ReviewService {
           }
         });
       } catch (error) {
-        await this.writeErrorLog(
+        await this.handleError(
           `处理文件 ${file.filename} 的块批次失败`,
           error
         );
@@ -652,7 +647,7 @@ class ReviewService {
 
       return result || this.createEmptyResult();
     } catch (error) {
-      await this.writeErrorLog(`审查文件块 ${chunkIndex} 失败`, error);
+      await this.handleError(`审查文件块 ${chunkIndex} 失败`, error);
       return this.createAPIResultWithIssue(
         "error",
         1,
@@ -707,10 +702,10 @@ class ReviewService {
       return {
         file: file.filename,
         status: file.status,
-        issues: parsedResult?.issues || [],
+        issues: parsedResult,
       };
     } catch (apiError) {
-      await this.writeErrorLog("调用DeepSeek API失败", apiError);
+      await this.handleError("调用DeepSeek API失败", apiError);
       return {
         file: file.filename,
         status: file.status,
@@ -739,7 +734,7 @@ class ReviewService {
             reviewResults.push(result);
           }
         } catch (fileError) {
-          await this.writeErrorLog(`处理文件 ${file.filename} 失败`, fileError);
+          await this.handleError(`处理文件 ${file.filename} 失败`, fileError);
           // 继续处理其他文件
           reviewResults.push({
             file: file.filename,
@@ -758,7 +753,7 @@ class ReviewService {
 
       return reviewResults;
     } catch (error) {
-      await this.writeErrorLog("处理变更文件失败", error);
+      await this.handleError("处理变更文件失败", error);
       return [
         this.createAPIResultWithIssue(
           "error",
@@ -810,8 +805,8 @@ class ReviewService {
     });
   }
 
-  // 添加日志记录方法
-  static async writeErrorLog(message, error) {
+  // 统一错误处理方法
+  static async handleError(message, error) {
     try {
       // 确保日志目录存在
       await fs.ensureDir(logsDir);
@@ -824,12 +819,12 @@ class ReviewService {
       // 格式化错误信息
       const timestamp = new Date().toISOString();
       const errorDetails = `
-        [${timestamp}] ${message}
-        Error: ${error.message || error}
-        Stack: ${error.stack || "No stack trace available"}
+[${timestamp}] ${message}
+Error: ${error.message || error}
+Stack: ${error.stack || "No stack trace available"}
 
-        ----------------------------------------
-        `;
+----------------------------------------
+`;
 
       // 追加写入日志文件
       await fs.appendFile(logFilePath, errorDetails);
