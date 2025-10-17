@@ -329,13 +329,31 @@ class ReviewService {
 
   // 提取通用的JSON解析方法
   static parseAPIResponse(responseData) {
-    if (responseDaa.choices && responseData.choices.length > 0) {
+    if (responseData.choices && responseData.choices.length > 0) {
       const content = responseData.choices[0].message.content;
       try {
-        return content;
+        // 尝试直接解析JSON
+        return JSON.parse(content);
       } catch (jsonError) {
-        console.error("JSON解析失败:", jsonError);
-        return null;
+        // 如果直接解析失败，尝试提取代码块中的JSON
+        try {
+          // 匹配代码块中的内容
+          const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (codeBlockMatch && codeBlockMatch[1]) {
+            return JSON.parse(codeBlockMatch[1]);
+          }
+          
+          // 如果没有代码块，尝试清理内容后解析
+          const cleanedContent = content
+            .replace(/```(?:json)?/g, '')
+            .trim();
+          
+          return JSON.parse(cleanedContent);
+        } catch (cleanJsonError) {
+          console.error("JSON解析失败:", jsonError);
+          console.error("清理后JSON解析也失败:", cleanJsonError);
+          return null;
+        }
       }
     }
     return null;
@@ -632,7 +650,7 @@ class ReviewService {
         {
           role: "system",
           content:
-            "你是一个代码审查专家，需要帮助开发者发现代码变更中的问题并提供改进建议。请分析以下代码变更，重点关注：\n1. 代码质量和可维护性\n2. 潜在的bug和安全问题\n3. 性能优化机会\n4. 是否符合最佳实践\n请以JSON格式返回结果，包含issues数组，每个issue应包含severity（'high', 'medium', 'low', 'info'）、line（问题所在行）、message（问题描述）和suggestion（改进建议）。如果没有问题，返回空的issues数组。",
+            "你是一个代码审查专家，需要帮助开发者发现代码变更中的问题并提供改进建议。请分析以下代码变更，重点关注：\n1. 代码质量和可维护性\n2. 潜在的bug和安全问题\n3. 性能优化机会\n4. 是否符合最佳实践\n请以JSON格式返回结果，包含issues数组，每个issue应包含severity（'high', 'medium', 'low', 'info'）、line（问题所在行）、message（问题描述）和suggestion（改进建议）。如果没有问题，返回空的issues数组。请只返回JSON格式，不要包含其他解释文本或Markdown代码块标记。",
         },
         {
           role: "user",
@@ -688,7 +706,7 @@ class ReviewService {
         {
           role: "system",
           content:
-            "你是一个代码审查专家，需要帮助开发者发现代码变更中的问题并提供改进建议。请分析以下代码变更，重点关注：\n1. 代码质量和可维护性\n2. 潜在的bug和安全问题\n3. 性能优化机会\n4. 是否符合最佳实践\n请以JSON格式返回结果，包含issues数组，每个issue应包含severity（'high', 'medium', 'low', 'info'）、line（问题所在行）、message（问题描述）和suggestion（改进建议）。如果没有问题，返回空的issues数组。",
+            "你是一个代码审查专家，需要帮助开发者发现代码变更中的问题并提供改进建议。请分析以下代码变更，重点关注：\n1. 代码质量和可维护性\n2. 潜在的bug和安全问题\n3. 性能优化机会\n4. 是否符合最佳实践\n请以JSON格式返回结果，包含issues数组，每个issue应包含severity（'high', 'medium', 'low', 'info'）、line（问题所在行）、message（问题描述）和suggestion（改进建议）。如果没有问题，返回空的issues数组。请只返回JSON格式，不要包含其他解释文本或Markdown代码块标记。",
         },
         {
           role: "user",
@@ -702,7 +720,7 @@ class ReviewService {
       return {
         file: file.filename,
         status: file.status,
-        issues: parsedResult,
+        issues: parsedResult?.issues || [],
       };
     } catch (apiError) {
       await this.handleError("调用DeepSeek API失败", apiError);

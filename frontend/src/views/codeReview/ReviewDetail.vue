@@ -89,7 +89,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
-import api from '../api'
+import api from '../../api'
 
 const route = useRoute()
 const projectId = route.params.projectId
